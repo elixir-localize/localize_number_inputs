@@ -71,6 +71,16 @@ defmodule Localize.Inputs.Number.Parser do
     end
   end
 
+  # Anything other than nil/binary: reject cleanly. Catches the
+  # garbage-input case (atoms, maps, structs) without crashing
+  # the caller — rule 2 from CLAUDE.md.
+  def parse_number(other, _options) do
+    {:error,
+     %ArgumentError{
+       message: "parse_number/2 expects a binary or nil; got #{inspect(other)}"
+     }}
+  end
+
   @doc """
   Normalises a parsed value to its canonical period-decimal
   string form — what a JS-driven form submission expects.

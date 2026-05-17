@@ -282,7 +282,18 @@ defmodule Localize.Inputs.Number.Validator do
   defp to_decimal(value) when is_float(value), do: Decimal.from_float(value)
   defp to_decimal(_), do: Decimal.new(0)
 
-  defp describe(value), do: to_string(value)
+  # Render a bound for an error message. `to_string/1` raises
+  # for maps / tuples / structs without `String.Chars`, which
+  # would crash the entire validation pipeline on a typo'd
+  # bound like `max: %{}`. Fall through to `inspect/1` so the
+  # validator always returns cleanly.
+  defp describe(value) do
+    try do
+      to_string(value)
+    rescue
+      Protocol.UndefinedError -> inspect(value)
+    end
+  end
 
   defp decimal_places(%Decimal{exp: exp}) when exp < 0, do: -exp
   defp decimal_places(%Decimal{}), do: 0

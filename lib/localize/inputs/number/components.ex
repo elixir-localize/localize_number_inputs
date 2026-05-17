@@ -142,7 +142,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
         data-number-system={@locale_data.number_system}
         data-minus={@locale_data.minus_sign}
         data-integer={to_string(@integer)}
-        data-decimals={@decimals}
+        data-decimals={value_attr(@decimals)}
         data-min={value_attr(@min)}
         data-max={value_attr(@max)}
         phx-hook={if @js, do: "NumberInput"}
@@ -222,7 +222,20 @@ if Code.ensure_loaded?(Phoenix.Component) and
     end
 
     defp value_attr(nil), do: nil
-    defp value_attr(value), do: to_string(value)
+
+    defp value_attr(value) do
+      # `to_string/1` raises for maps / tuples / structs
+      # without `String.Chars`. The component is render-path
+      # code so a typo'd attr like `min={%{}}` must NOT crash
+      # the page — drop the attr entirely on un-stringifiable
+      # values (Phoenix omits the attribute when the value
+      # is nil).
+      try do
+        to_string(value)
+      rescue
+        Protocol.UndefinedError -> nil
+      end
+    end
 
     defp text_align_class(:left), do: "text-left"
     defp text_align_class(:center), do: "text-center"
@@ -332,7 +345,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
           data-number-system={@locale_data.number_system}
           data-minus={@locale_data.minus_sign}
           data-integer={to_string(@integer)}
-          data-decimals={@decimals}
+          data-decimals={value_attr(@decimals)}
           data-min={value_attr(@min)}
           data-max={value_attr(@max)}
           phx-hook={if @js, do: "NumberInput"}
@@ -581,8 +594,16 @@ if Code.ensure_loaded?(Phoenix.Component) and
 
         _ ->
           case Unit.unit_for_locale(:en, options) do
-            {:ok, data} -> data
-            _ -> %Unit{}
+            {:ok, data} ->
+              data
+
+            _ ->
+              # Defaults of `nil` would crash any downstream
+              # `Enum.map(unit_data.preferred_units, ...)` with
+              # `Protocol.UndefinedError`. Coalesce the
+              # iterable fields to empty lists so the render
+              # path never sees a non-enumerable.
+              %Unit{preferred_units: [], all_units: []}
           end
       end
     end
