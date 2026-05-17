@@ -266,8 +266,21 @@ defmodule Localize.Inputs.Number.Validator do
   defp compare(a, b), do: Decimal.compare(to_decimal(a), to_decimal(b))
 
   defp to_decimal(value) when is_integer(value), do: Decimal.new(value)
-  defp to_decimal(value) when is_binary(value), do: Decimal.new(value)
+
+  defp to_decimal(value) when is_binary(value) do
+    # `Decimal.new/1` raises on malformed input. Caller bounds
+    # (`:min`, `:max`) flow from app code so should be well-
+    # formed, but defend against typos: return `Decimal.new(0)`
+    # for unparseable strings so the comparison silently
+    # passes rather than crashing the validation pipeline.
+    case Decimal.parse(value) do
+      {decimal, ""} -> decimal
+      _ -> Decimal.new(0)
+    end
+  end
+
   defp to_decimal(value) when is_float(value), do: Decimal.from_float(value)
+  defp to_decimal(_), do: Decimal.new(0)
 
   defp describe(value), do: to_string(value)
 

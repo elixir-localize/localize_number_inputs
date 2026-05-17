@@ -21,6 +21,34 @@ if Code.ensure_loaded?(Phoenix.Component) and
 
         npm install autonumeric
 
+    ## Tolerance of invalid input
+
+    These components sit on the render path and never raise on
+    bad input — the page always renders. Specifically:
+
+    * **Unknown `:locale`** — falls back to `:en` locale data;
+      if `:en` itself is unavailable (broken Localize install)
+      falls back to an empty `%Localize.Inputs.Number.Symbols{}`
+      so attribute reads still resolve to safe defaults.
+
+    * **Unknown `:category`** on `unit_input/1` — falls back
+      to an empty `%Localize.Inputs.Number.Unit{}`. The picker
+      renders no rows rather than 500ing the page.
+
+    * **Blank or non-numeric `value`** — formatted as `""` in
+      the visible input; the hidden ISO carrier stays empty.
+      The submit-side parser (`Localize.Inputs.Number.Parser.parse_number/2`)
+      returns `{:ok, nil}` for blanks and `{:error, _}` for
+      garbage, never raises.
+
+    * **Malformed `:min` / `:max` / `:decimals` bounds** —
+      `Localize.Inputs.Number.Validator.validate_number/2`
+      uses `Decimal.parse/1` with a `Decimal.new(0)` fallback,
+      so a typo in a bound silently passes the bound check
+      rather than crashing the validation pipeline. Returns
+      `{:error, %ValidationError{}}` for real out-of-range
+      values.
+
     """
 
     use Phoenix.Component
@@ -141,7 +169,10 @@ if Code.ensure_loaded?(Phoenix.Component) and
     defp assign_common(assigns) do
       locale = assigns[:locale] || Localize.get_locale()
 
-      {:ok, locale_data} = Symbols.number_for_locale(locale)
+      # Components are render-path code — never raise on an
+      # unknown locale. Fall back to `:en` so downstream
+      # `locale_data.decimal` etc. still resolves.
+      locale_data = safe_number_for_locale(locale)
 
       field_struct = assigns.form[assigns.field]
       name = field_struct.name
@@ -468,10 +499,10 @@ if Code.ensure_loaded?(Phoenix.Component) and
     defp assign_unit_common(assigns) do
       locale = assigns[:locale] || Localize.get_locale()
 
-      {:ok, locale_data} = Symbols.number_for_locale(locale)
+      locale_data = safe_number_for_locale(locale)
 
-      {:ok, unit_data} =
-        Unit.unit_for_locale(locale,
+      unit_data =
+        safe_unit_for_locale(locale,
           category: assigns.category,
           include_prefixed: assigns.include_prefixed
         )
@@ -523,6 +554,39 @@ if Code.ensure_loaded?(Phoenix.Component) and
     defp blank_to_nil(""), do: nil
     defp blank_to_nil(value), do: value
 
+    # ── Defensive locale-data wrappers ────────────────────────
+
+    # Components must not raise on an unknown locale; render
+    # the input under the `:en` fallback rather than crashing
+    # the page. The fallback chain stops at `:en` — if even
+    # `:en` errors, that's a Localize installation problem
+    # worth surfacing.
+    defp safe_number_for_locale(locale) do
+      case Symbols.number_for_locale(locale) do
+        {:ok, data} ->
+          data
+
+        _ ->
+          case Symbols.number_for_locale(:en) do
+            {:ok, data} -> data
+            _ -> %Symbols{}
+          end
+      end
+    end
+
+    defp safe_unit_for_locale(locale, options) do
+      case Unit.unit_for_locale(locale, options) do
+        {:ok, data} ->
+          data
+
+        _ ->
+          case Unit.unit_for_locale(:en, options) do
+            {:ok, data} -> data
+            _ -> %Unit{}
+          end
+      end
+    end
+
     defp default_unit(%Unit{preferred_units: [{name, _} | _]}), do: name
     defp default_unit(%Unit{all_units: [{name, _} | _]}), do: name
     defp default_unit(_), do: nil
@@ -530,8 +594,8 @@ if Code.ensure_loaded?(Phoenix.Component) and
     defp assign_unit_picker(assigns) do
       locale = assigns[:locale] || Localize.get_locale()
 
-      {:ok, unit_data} =
-        Unit.unit_for_locale(locale,
+      unit_data =
+        safe_unit_for_locale(locale,
           category: assigns.category,
           include_prefixed: assigns.include_prefixed
         )
