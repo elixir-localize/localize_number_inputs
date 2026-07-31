@@ -28,7 +28,7 @@ if Code.ensure_loaded?(Ecto.Changeset) do
 
     ### Arguments
 
-    * `changeset` is an `Ecto.Changeset.t/0`.
+    * `changeset` is an `t:Ecto.Changeset.t/0`.
 
     * `field` is the field name as an atom.
 

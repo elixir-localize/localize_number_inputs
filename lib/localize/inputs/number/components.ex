@@ -223,18 +223,16 @@ if Code.ensure_loaded?(Phoenix.Component) and
 
     defp value_attr(nil), do: nil
 
+    # `to_string/1` raises for maps / tuples / structs
+    # without `String.Chars`. The component is render-path
+    # code so a typo'd attr like `min={%{}}` must NOT crash
+    # the page — drop the attr entirely on un-stringifiable
+    # values (Phoenix omits the attribute when the value
+    # is nil).
     defp value_attr(value) do
-      # `to_string/1` raises for maps / tuples / structs
-      # without `String.Chars`. The component is render-path
-      # code so a typo'd attr like `min={%{}}` must NOT crash
-      # the page — drop the attr entirely on un-stringifiable
-      # values (Phoenix omits the attribute when the value
-      # is nil).
-      try do
-        to_string(value)
-      rescue
-        Protocol.UndefinedError -> nil
-      end
+      to_string(value)
+    rescue
+      Protocol.UndefinedError -> nil
     end
 
     defp text_align_class(:left), do: "text-left"
@@ -621,6 +619,23 @@ if Code.ensure_loaded?(Phoenix.Component) and
           include_prefixed: assigns.include_prefixed
         )
 
+      id = assigns[:id] || "unit-picker-#{System.unique_integer([:positive])}"
+      {hidden_name, hidden_id} = unit_picker_hidden(assigns, id)
+
+      assigns
+      |> assign(:unit_data, unit_data)
+      |> assign(:sections, unit_picker_sections(unit_data))
+      |> assign(:id, id)
+      |> assign(:hidden_name, hidden_name)
+      |> assign(:hidden_id, hidden_id)
+      |> assign(:current_display, unit_picker_display(unit_data, assigns.current))
+      |> assign_new(:class, fn -> nil end)
+      |> assign_new(:button_class, fn -> nil end)
+      |> assign_new(:overlay_class, fn -> nil end)
+      |> assign_new(:row_class, fn -> nil end)
+    end
+
+    defp unit_picker_sections(unit_data) do
       preferred_rows =
         Enum.map(unit_data.preferred_units, fn {name, display} ->
           %{code: name, name: display}
@@ -633,50 +648,38 @@ if Code.ensure_loaded?(Phoenix.Component) and
         end)
         |> Enum.map(fn {name, display} -> %{code: name, name: display} end)
 
-      sections = [
+      [
         {~t"Preferred", preferred_rows},
         {~t"All units", all_rows}
       ]
+    end
 
-      id = assigns[:id] || "unit-picker-#{System.unique_integer([:positive])}"
+    # Same three-priority naming scheme as currency_picker:
+    # 1) an explicit `name=` attr (used when embedded in
+    #    unit_input to inject a nested name like `height[unit]`),
+    # 2) a form+field pair (standalone use),
+    # 3) nothing — the picker is purely client-side state.
+    defp unit_picker_hidden(assigns, id) do
+      case {assigns[:name], assigns[:form], assigns[:field]} do
+        {explicit, _, _} when is_binary(explicit) ->
+          {explicit, assigns[:input_id] || "#{id}-value"}
 
-      # Same three-priority naming scheme as currency_picker:
-      # 1) an explicit `name=` attr (used when embedded in
-      #    unit_input to inject a nested name like `height[unit]`),
-      # 2) a form+field pair (standalone use),
-      # 3) nothing — the picker is purely client-side state.
-      {hidden_name, hidden_id} =
-        case {assigns[:name], assigns[:form], assigns[:field]} do
-          {explicit, _, _} when is_binary(explicit) ->
-            {explicit, assigns[:input_id] || "#{id}-value"}
+        {_, form, field} when not is_nil(form) and not is_nil(field) ->
+          {Phoenix.HTML.Form.input_name(form, field), "#{id}-value"}
 
-          {_, form, field} when not is_nil(form) and not is_nil(field) ->
-            {Phoenix.HTML.Form.input_name(form, field), "#{id}-value"}
+        _ ->
+          {nil, nil}
+      end
+    end
 
-          _ ->
-            {nil, nil}
-        end
-
-      current_display =
-        case Enum.find(
-               unit_data.preferred_units ++ unit_data.all_units,
-               fn {name, _} -> name == assigns.current end
-             ) do
-          {_, display} -> display
-          _ -> assigns.current
-        end
-
-      assigns
-      |> assign(:unit_data, unit_data)
-      |> assign(:sections, sections)
-      |> assign(:id, id)
-      |> assign(:hidden_name, hidden_name)
-      |> assign(:hidden_id, hidden_id)
-      |> assign(:current_display, current_display)
-      |> assign_new(:class, fn -> nil end)
-      |> assign_new(:button_class, fn -> nil end)
-      |> assign_new(:overlay_class, fn -> nil end)
-      |> assign_new(:row_class, fn -> nil end)
+    defp unit_picker_display(unit_data, current) do
+      case Enum.find(
+             unit_data.preferred_units ++ unit_data.all_units,
+             fn {name, _} -> name == current end
+           ) do
+        {_, display} -> display
+        _ -> current
+      end
     end
   end
 end

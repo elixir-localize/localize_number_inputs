@@ -10,7 +10,7 @@ defmodule Localize.Inputs.Number.AdversarialRenderTest do
   Catches rule-2 violations per CLAUDE.md.
   """
 
-  alias Localize.Inputs.Number.{Components, Validator, Parser}
+  alias Localize.Inputs.Number.{Components, Parser, Validator}
 
   @bad_atoms [nil, :"", :unknown, :__bad__]
   @bad_strings [nil, "", "garbage", "🙂", String.duplicate("a", 1000)]
@@ -203,15 +203,13 @@ defmodule Localize.Inputs.Number.AdversarialRenderTest do
   end
 
   defp assert_no_raise(fun, context: ctx) do
-    try do
-      fun.()
-    rescue
-      e ->
-        flunk("""
-        Component raised an exception under #{ctx}:
+    fun.()
+  rescue
+    e ->
+      flunk("""
+      Component raised an exception under #{ctx}:
 
-          #{Exception.format(:error, e, [])}
-        """)
-    end
+        #{Exception.format(:error, e, [])}
+      """)
   end
 end

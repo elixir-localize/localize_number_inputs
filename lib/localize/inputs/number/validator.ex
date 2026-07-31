@@ -288,11 +288,9 @@ defmodule Localize.Inputs.Number.Validator do
   # bound like `max: %{}`. Fall through to `inspect/1` so the
   # validator always returns cleanly.
   defp describe(value) do
-    try do
-      to_string(value)
-    rescue
-      Protocol.UndefinedError -> inspect(value)
-    end
+    to_string(value)
+  rescue
+    Protocol.UndefinedError -> inspect(value)
   end
 
   defp decimal_places(%Decimal{exp: exp}) when exp < 0, do: -exp

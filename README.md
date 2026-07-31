@@ -13,7 +13,7 @@ Built on top of [`localize`](https://hex.pm/packages/localize) and [`localize_in
 ```elixir
 def deps do
   [
-    {:localize_number_inputs, "~> 0.1"},
+    {:localize_number_inputs, "~> 0.2"},
 
     # Activate the HEEx components:
     {:phoenix_html, "~> 4.0"},
