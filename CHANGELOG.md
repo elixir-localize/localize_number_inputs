@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+* `<.unit_picker>` section headers (**Preferred**, **All units**) render as a filled band with foreground-colour text, so they read as headers rather than as another unit row.
+
 ## [v0.2.0] — 2026-07-31
 
 ### Changed

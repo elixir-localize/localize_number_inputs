@@ -166,13 +166,20 @@
   flex: 1;
 }
 
+/* Section headers are a filled band, not just smaller text, so
+ * they never read as another unit row. */
 .unit-picker-section {
-  padding: 0.5rem 0.75rem 0.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.4rem 0.75rem;
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--li-fg-muted);
+  color: var(--li-fg);
+  background: var(--li-bg-muted);
+  border-block: 1px solid var(--li-border);
 }
 
 .unit-picker-row {
