@@ -182,6 +182,11 @@
   border-block: 1px solid var(--li-border);
 }
 
+/* `display: grid` below is author-origin and so beats the
+ * user-agent `[hidden]` rule; search-filtered rows need an
+ * explicit hide or they stay on screen. */
+.unit-picker-row[hidden] { display: none !important; }
+
 .unit-picker-row {
   display: grid;
   grid-template-columns: 1fr auto;

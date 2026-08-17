@@ -1,10 +1,14 @@
 # Changelog
 
-## Unreleased
+## [v0.2.1] — 2026-08-18
 
 ### Changed
 
 * `<.unit_picker>` section headers (**Preferred**, **All units**) render as a filled band with foreground-colour text, so they read as headers rather than as another unit row.
+
+### Bug Fixes
+
+* `<.unit_picker>` search now hides non-matching rows. `.unit-picker-row { display: grid }` overrode the user-agent `[hidden]` rule, so filtering marked rows hidden while they stayed on screen.
 
 ## [v0.2.0] — 2026-07-31
 
