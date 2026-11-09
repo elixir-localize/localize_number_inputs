@@ -60,6 +60,15 @@ defmodule Localize.Inputs.Number.ComponentsTest do
       end
     end
 
+    test "renders a value that is not a number or text blank" do
+      for value <- [:unknown, :"", %{}, [], {1, 2}] do
+        input = number_input_tag(value, "en")
+
+        assert input =~ ~s(value=""), "value=#{inspect(value)}"
+        refute input =~ "data-amount", "value=#{inspect(value)}"
+      end
+    end
+
     test "keeps unparseable text as typed, without data-amount" do
       input = number_input_tag("abc", "en")
 

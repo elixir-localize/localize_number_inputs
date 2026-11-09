@@ -273,11 +273,15 @@ if Code.ensure_loaded?(Phoenix.Component) and
       end
     end
 
-    defp format_value(value, locale) do
+    defp format_value(value, locale) when is_number(value) or is_struct(value, Decimal) do
       case Localize.Number.to_string(value, locale: locale) do
         {:ok, formatted} -> {formatted, plain_amount(value)}
         {:error, _} -> {"", nil}
       end
+    end
+
+    defp format_value(_value, _locale) do
+      {"", nil}
     end
 
     defp plain_amount(%Decimal{} = value) do
@@ -296,10 +300,6 @@ if Code.ensure_loaded?(Phoenix.Component) and
       value
       |> Decimal.from_float()
       |> Decimal.to_string(:normal)
-    end
-
-    defp plain_amount(_value) do
-      nil
     end
 
     defp value_attr(nil), do: nil
