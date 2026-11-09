@@ -8,6 +8,8 @@
 
 * `Localize.Inputs.Number.Symbols` has a `:grouping` field, which both inputs render as `data-grouping` (`"3,2"`) for the `NumberInput` hook to set AutoNumeric's group spacing from.
 
+* A `package.json`, shipped in the Hex package, so the hooks import as `"localize_number_inputs"` where Phoenix's esbuild config puts `deps` on `NODE_PATH`.
+
 ### Changed
 
 * Requires `localize ~> 1.6`.
@@ -31,6 +33,8 @@
 * With AutoNumeric loaded, `hi`, `bn`, `gu`, `en-IN` and the other Indian-grouping locales show `12,34,567`, including numbers of 10 digits or more. `tok` groups in twos, so its four-digit values no longer fail to parse.
 
 * With AutoNumeric loaded, fields in `ar`, `he`, `fa`, `ur` and other locales whose CLDR minus sign carries a direction mark get live formatting. The hook strips U+200E, U+200F and U+061C, which AutoNumeric rejects.
+
+* The `Localize.Inputs.Number.Components` setup docs import the hooks from `"localize_number_inputs"`, configure AutoNumeric and register `UnitPicker`; they imported `"localize_inputs"`, which resolves to nothing.
 
 ## [v0.2.1] — 2026-08-18
 

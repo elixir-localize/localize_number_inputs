@@ -10,12 +10,22 @@ if Code.ensure_loaded?(Phoenix.Component) and
 
     ## Setup
 
-    Add the JS hook in your `assets/js/app.js`:
+    Add the JS hooks in your `assets/js/app.js`:
 
-        import Hooks from "localize_inputs"
+        import AutoNumeric from "autonumeric"
+        import Hooks from "localize_number_inputs"
+
+        Hooks.configure({ AutoNumeric })
+
         let liveSocket = new LiveSocket("/live", Socket, {
-          hooks: { NumberInput: Hooks.NumberInput }
+          hooks: { NumberInput: Hooks.NumberInput, UnitPicker: Hooks.UnitPicker }
         })
+
+    `"localize_number_inputs"` resolves because Phoenix's generated
+    esbuild config puts `deps` on `NODE_PATH`, as it does for
+    `"phoenix_html"`. If your build doesn't, import
+    `"../../deps/localize_number_inputs/priv/static/localize_number_inputs.js"`
+    instead.
 
     Install AutoNumeric as a peer dep:
 

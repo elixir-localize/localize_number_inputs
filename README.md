@@ -48,8 +48,8 @@ The token set is in `localize_inputs_core`; this package just adds component-spe
 ## JS
 
 ```javascript
-import Hooks from "../../deps/localize_number_inputs/priv/static/localize_number_inputs.js"
 import AutoNumeric from "autonumeric"
+import Hooks from "localize_number_inputs"
 
 Hooks.configure({ AutoNumeric })
 
@@ -57,6 +57,8 @@ new LiveSocket("/live", Socket, {
   hooks: { NumberInput: Hooks.NumberInput, UnitPicker: Hooks.UnitPicker }
 })
 ```
+
+`"localize_number_inputs"` resolves because Phoenix's generated esbuild config puts `deps` on `NODE_PATH`, as it does for `"phoenix_html"`. If your build doesn't, import `"../../deps/localize_number_inputs/priv/static/localize_number_inputs.js"` instead.
 
 Without AutoNumeric loaded the input still works — the server-side parser accepts whatever the user typed on submit. Live formatting and cursor preservation are off in that fallback.
 

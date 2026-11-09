@@ -1,0 +1,29 @@
+{
+  "name": "localize_number_inputs",
+  "version": "0.2.1",
+  "description": "Phoenix LiveView hooks for Localize.Inputs.Number: AutoNumeric-backed locale-aware number formatting and a searchable unit picker.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "module": "./priv/static/localize_number_inputs.js",
+  "main": "./priv/static/localize_number_inputs.js",
+  "style": "./priv/static/localize_number_inputs.css",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elixir-localize/localize_number_inputs.git"
+  },
+  "peerDependencies": {
+    "autonumeric": "^4.10.0"
+  },
+  "peerDependenciesMeta": {
+    "autonumeric": {
+      "optional": true
+    }
+  },
+  "files": [
+    "README.md",
+    "LICENSE.md",
+    "package.json",
+    "priv/static/localize_number_inputs.js",
+    "priv/static/localize_number_inputs.css"
+  ]
+}

@@ -1,6 +1,7 @@
 defmodule Localize.NumberInputs.MixProject do
   use Mix.Project
 
+  # Also change the version in package.json
   @version "0.2.1"
   @source_url "https://github.com/elixir-localize/localize_number_inputs"
 
@@ -45,7 +46,7 @@ defmodule Localize.NumberInputs.MixProject do
       maintainers: ["Kip Cole"],
       licenses: ["Apache-2.0"],
       links: links(),
-      files: ~w(lib priv mix.exs README.md CHANGELOG.md LICENSE.md)
+      files: ~w(lib priv mix.exs package.json README.md CHANGELOG.md LICENSE.md)
     ]
   end
 
