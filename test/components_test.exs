@@ -121,6 +121,61 @@ defmodule Localize.Inputs.Number.ComponentsTest do
     end
   end
 
+  describe "locale handling" do
+    setup do
+      {:ok, language_tag} = Localize.validate_locale("de")
+      {:ok, _} = Localize.put_locale("de")
+
+      %{locales: ["de", :de, language_tag, nil]}
+    end
+
+    test "number_input/1 accepts a string, atom, tag or nil locale", %{locales: locales} do
+      for locale <- locales do
+        html = number_input_html(Decimal.new("1234.5"), locale)
+        context = "locale=#{inspect(locale)}"
+
+        assert tag_with_class(html, "div", "number-input-wrapper") =~ ~s(data-locale="de"),
+               context
+
+        assert tag_with_class(html, "input", "number-input-field") =~ ~s(value="1.234,5"),
+               context
+      end
+    end
+
+    test "unit_input/1 and its picker use the same locale", %{locales: locales} do
+      for locale <- locales do
+        html = unit_input_html(Decimal.new("1234.5"), locale)
+        input = tag_with_class(html, "input", "unit-input-field")
+        context = "locale=#{inspect(locale)}"
+
+        assert input =~ ~s(data-locale="de"), context
+        assert input =~ ~s(value="1.234,5"), context
+        assert tag_with_class(html, "div", "unit-picker") =~ ~s(data-locale="de"), context
+      end
+    end
+
+    test "unit_picker/1 accepts a string, atom, tag or nil locale", %{locales: locales} do
+      for locale <- locales do
+        html = unit_picker_html(locale)
+
+        assert tag_with_class(html, "div", "unit-picker") =~ ~s(data-locale="de"),
+               "locale=#{inspect(locale)}"
+      end
+    end
+
+    test "an invalid locale renders the value and its separators as en" do
+      for locale <- ["xx-unknown", :garbage, ""] do
+        html = number_input_html(Decimal.new("1234.5"), locale)
+        wrapper = tag_with_class(html, "div", "number-input-wrapper")
+        context = "locale=#{inspect(locale)}"
+
+        assert wrapper =~ ~s(data-locale="en"), context
+        assert wrapper =~ ~s(data-decimal="."), context
+        assert tag_with_class(html, "input", "number-input-field") =~ ~s(value="1,234.5"), context
+      end
+    end
+  end
+
   # ── helpers ─────────────────────────────────────────────────
 
   defp number_input_tag(value, locale) do
@@ -145,15 +200,26 @@ defmodule Localize.Inputs.Number.ComponentsTest do
   end
 
   defp unit_input_tag(value, locale) do
+    value
+    |> unit_input_html(locale)
+    |> tag_with_class("input", "unit-input-field")
+  end
+
+  defp unit_input_html(value, locale) do
     form = Phoenix.HTML.FormData.to_form(%{"height" => value}, as: :demo)
     assigns = %{form: form, locale: locale}
 
-    html =
-      to_html(~H"""
-      <Components.unit_input form={@form} field={:height} category="length" locale={@locale} />
-      """)
+    to_html(~H"""
+    <Components.unit_input form={@form} field={:height} category="length" locale={@locale} />
+    """)
+  end
 
-    tag_with_class(html, "input", "unit-input-field")
+  defp unit_picker_html(locale) do
+    assigns = %{locale: locale}
+
+    to_html(~H"""
+    <Components.unit_picker name="unit" current="meter" category="length" locale={@locale} />
+    """)
   end
 
   defp to_html(rendered) do

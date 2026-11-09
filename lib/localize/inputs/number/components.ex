@@ -62,10 +62,11 @@ if Code.ensure_loaded?(Phoenix.Component) and
     These components sit on the render path and never raise on
     bad input — the page always renders. Specifically:
 
-    * **Unknown `:locale`** — falls back to `:en` locale data;
-      if `:en` itself is unavailable (broken Localize install)
-      falls back to an empty `%Localize.Inputs.Number.Symbols{}`
-      so attribute reads still resolve to safe defaults.
+    * **Unknown `:locale`** — renders as `:en`, the value as
+      well as the locale data. If `:en` itself is unavailable
+      (broken Localize install) it falls back to an empty
+      `%Localize.Inputs.Number.Symbols{}` so attribute reads
+      still resolve to safe defaults.
 
     * **Unknown `:category`** on `unit_input/1` — falls back
       to an empty `%Localize.Inputs.Number.Unit{}`. The picker
@@ -125,8 +126,10 @@ if Code.ensure_loaded?(Phoenix.Component) and
 
     * `:field` — the form field as an atom.
 
-    * `:locale` — display locale. Defaults to
-      `Localize.get_locale/0`.
+    * `:locale` — display locale, as a string, an atom or a
+      `t:Localize.LanguageTag.t/0`. Defaults to
+      `Localize.get_locale/0`. It is validated once per render;
+      an invalid locale renders with `:en`.
 
     * `:integer` — when `true`, accept integers only and emit
       `inputmode="numeric"`.
@@ -158,7 +161,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
     attr(:form, Phoenix.HTML.Form, required: true)
     attr(:field, :atom, required: true)
     attr(:value, :any, default: nil)
-    attr(:locale, :string, default: nil)
+    attr(:locale, :any, default: nil)
     attr(:integer, :boolean, default: false)
     attr(:min, :any, default: nil)
     attr(:max, :any, default: nil)
@@ -210,19 +213,15 @@ if Code.ensure_loaded?(Phoenix.Component) and
     # ── Internal: shared assigns ──────────────────────────────
 
     defp assign_common(assigns) do
-      locale = assigns[:locale] || Localize.get_locale()
-
-      # Components are render-path code — never raise on an
-      # unknown locale. Fall back to `:en` so downstream
-      # `locale_data.decimal` etc. still resolves.
-      locale_data = safe_number_for_locale(locale)
+      language_tag = validated_locale(assigns[:locale])
+      locale_data = safe_number_for_locale(language_tag)
 
       field_struct = assigns.form[assigns.field]
       name = field_struct.name
       id = field_struct.id
 
       assigns
-      |> assign(:locale, locale)
+      |> assign(:language_tag, language_tag)
       |> assign(:locale_data, locale_data)
       |> assign(:name, name)
       |> assign(:id, id)
@@ -236,7 +235,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
       form_value = (assigns.form[assigns.field] || %{}).value
       raw = explicit || form_value
 
-      {formatted, plain_amount} = format_value(raw, assigns.locale)
+      {formatted, plain_amount} = format_value(raw, assigns.language_tag)
 
       assigns
       |> assign(:formatted_value, formatted)
@@ -256,31 +255,36 @@ if Code.ensure_loaded?(Phoenix.Component) and
     # Blank input renders blank. Text that does not parse renders
     # as typed with no `data-amount`, so the user can correct it.
     # A value that cannot be formatted renders blank rather than
-    # crashing the page.
-    defp format_value(nil, _locale) do
+    # crashing the page, as does any value when not even `:en`
+    # validates (`validated_locale/1` returns `nil`).
+    defp format_value(_value, nil) do
       {"", nil}
     end
 
-    defp format_value("", _locale) do
+    defp format_value(nil, _language_tag) do
       {"", nil}
     end
 
-    defp format_value(value, locale) when is_binary(value) do
-      case Localize.Inputs.Number.Parser.parse_number(value, locale: locale) do
+    defp format_value("", _language_tag) do
+      {"", nil}
+    end
+
+    defp format_value(value, language_tag) when is_binary(value) do
+      case Localize.Inputs.Number.Parser.parse_number(value, locale: language_tag) do
         {:ok, nil} -> {"", nil}
-        {:ok, parsed} -> format_value(parsed, locale)
+        {:ok, parsed} -> format_value(parsed, language_tag)
         {:error, _} -> {value, nil}
       end
     end
 
-    defp format_value(value, locale) when is_number(value) or is_struct(value, Decimal) do
-      case Localize.Number.to_string(value, locale: locale) do
+    defp format_value(value, language_tag) when is_number(value) or is_struct(value, Decimal) do
+      case Localize.Number.to_string(value, locale: language_tag) do
         {:ok, formatted} -> {formatted, plain_amount(value)}
         {:error, _} -> {"", nil}
       end
     end
 
-    defp format_value(_value, _locale) do
+    defp format_value(_value, _language_tag) do
       {"", nil}
     end
 
@@ -365,8 +369,10 @@ if Code.ensure_loaded?(Phoenix.Component) and
     * `:default_unit` — the unit selected by default. If `nil`,
       the first preferred unit for the locale is selected.
 
-    * `:locale` — display locale. Defaults to
-      `Localize.get_locale/0`.
+    * `:locale` — display locale, as a string, an atom or a
+      `t:Localize.LanguageTag.t/0`. Defaults to
+      `Localize.get_locale/0`. It is validated once per render;
+      an invalid locale renders with `:en`.
 
     * `:integer`, `:min`, `:max`, `:decimals`, `:align`,
       `:placeholder`, `:js`, `:class`, `:input_class` — passed
@@ -393,7 +399,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
     attr(:field, :atom, required: true)
     attr(:category, :string, required: true)
     attr(:default_unit, :string, default: nil)
-    attr(:locale, :string, default: nil)
+    attr(:locale, :any, default: nil)
     attr(:value, :any, default: nil)
     attr(:integer, :boolean, default: false)
     attr(:min, :any, default: nil)
@@ -448,7 +454,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
           input_id={"#{@id}-unit"}
           current={@selected_unit}
           category={@category}
-          locale={@locale}
+          locale={@language_tag}
           include_prefixed={@include_prefixed}
           class={@picker_class}
           id={"#{@id}-picker"}
@@ -475,8 +481,10 @@ if Code.ensure_loaded?(Phoenix.Component) and
 
     * `:category` — the unit category. **Required.**
 
-    * `:locale` — display locale. Defaults to
-      `Localize.get_locale/0`.
+    * `:locale` — display locale, as a string, an atom or a
+      `t:Localize.LanguageTag.t/0`. Defaults to
+      `Localize.get_locale/0`. It is validated once per render;
+      an invalid locale renders with `:en`.
 
     * `:form` + `:field` — when given, the hidden value input
       is named `Phoenix.HTML.Form.input_name(form, field)`.
@@ -602,12 +610,11 @@ if Code.ensure_loaded?(Phoenix.Component) and
     # ── Internal: unit_input assigns ──────────────────────────
 
     defp assign_unit_common(assigns) do
-      locale = assigns[:locale] || Localize.get_locale()
-
-      locale_data = safe_number_for_locale(locale)
+      language_tag = validated_locale(assigns[:locale])
+      locale_data = safe_number_for_locale(language_tag)
 
       unit_data =
-        safe_unit_for_locale(locale,
+        safe_unit_for_locale(language_tag,
           category: assigns.category,
           include_prefixed: assigns.include_prefixed
         )
@@ -617,7 +624,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
       id = field_struct.id
 
       assigns
-      |> assign(:locale, locale)
+      |> assign(:language_tag, language_tag)
       |> assign(:locale_data, locale_data)
       |> assign(:unit_data, unit_data)
       |> assign(:name_base, name_base)
@@ -635,7 +642,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
       {amount, unit} = extract_amount_and_unit(explicit || form_value)
 
       selected_unit = unit || assigns.default_unit || default_unit(assigns.unit_data)
-      {formatted, plain_amount} = format_value(amount, assigns.locale)
+      {formatted, plain_amount} = format_value(amount, assigns.language_tag)
 
       assigns
       |> assign(:formatted_amount, formatted)
@@ -669,11 +676,39 @@ if Code.ensure_loaded?(Phoenix.Component) and
 
     # ── Defensive locale-data wrappers ────────────────────────
 
-    # Components must not raise on an unknown locale; render
-    # the input under the `:en` fallback rather than crashing
-    # the page. The fallback chain stops at `:en` — if even
-    # `:en` errors, that's a Localize installation problem
-    # worth surfacing.
+    # The one place a caller's `:locale` is validated; every
+    # lookup and format after it takes the resulting tag. `nil`
+    # means the current locale, which is already a validated tag.
+    # Components must not raise on an unknown locale, so an
+    # invalid one renders as `:en`, the value as well as the
+    # separators the hook is given.
+    defp validated_locale(nil) do
+      Localize.get_locale()
+    end
+
+    defp validated_locale(locale) do
+      case Localize.validate_locale(locale) do
+        {:ok, language_tag} -> language_tag
+        {:error, _} -> fallback_locale()
+      end
+    end
+
+    # `nil` only when even `:en` does not validate, a broken
+    # Localize installation; the components then render without
+    # locale data rather than raise.
+    defp fallback_locale do
+      case Localize.validate_locale(:en) do
+        {:ok, language_tag} -> language_tag
+        {:error, _} -> nil
+      end
+    end
+
+    # The fallback chain stops at `:en` — if even `:en` errors,
+    # that's a Localize installation problem worth surfacing.
+    defp safe_number_for_locale(nil) do
+      %Symbols{}
+    end
+
     defp safe_number_for_locale(locale) do
       case Symbols.number_for_locale(locale) do
         {:ok, data} ->
@@ -685,6 +720,10 @@ if Code.ensure_loaded?(Phoenix.Component) and
             _ -> %Symbols{}
           end
       end
+    end
+
+    defp safe_unit_for_locale(nil, _options) do
+      %Unit{preferred_units: [], all_units: []}
     end
 
     defp safe_unit_for_locale(locale, options) do
@@ -713,10 +752,10 @@ if Code.ensure_loaded?(Phoenix.Component) and
     defp default_unit(_), do: nil
 
     defp assign_unit_picker(assigns) do
-      locale = assigns[:locale] || Localize.get_locale()
+      language_tag = validated_locale(assigns[:locale])
 
       unit_data =
-        safe_unit_for_locale(locale,
+        safe_unit_for_locale(language_tag,
           category: assigns.category,
           include_prefixed: assigns.include_prefixed
         )

@@ -14,6 +14,8 @@
 
 * Requires `localize ~> 1.6`.
 
+* `<.number_input>`, `<.unit_input>` and `<.unit_picker>` accept `:locale` as a string, atom or `Localize.LanguageTag` and validate it once per render. An invalid locale formats the value in `en` as well as the separators, where the value rendered blank.
+
 * With AutoNumeric loaded, fields show and accept Latin digits only, in every locale, as the docs now state. Since the direction-mark fix that includes `fa`, `ckb`, `sd` and `ps`, where 0.2.1 left a plain input after AutoNumeric threw.
 
 ### Bug Fixes
