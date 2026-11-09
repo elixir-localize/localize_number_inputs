@@ -284,7 +284,12 @@ function stopPlainInput(hook) {
 
 export const NumberInput = {
   mounted() {
-    this.input = this.el.querySelector("input.number-input-field");
+    // `<.number_input>` puts the hook on a wrapper that holds the
+    // input; `<.unit_input>` puts it, and the data attributes, on
+    // the input itself.
+    this.input = this.el.matches("input")
+      ? this.el
+      : this.el.querySelector("input.number-input-field");
     if (!this.input) return;
 
     this.data = readData(this.el);
