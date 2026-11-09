@@ -28,6 +28,8 @@
 
 * Text the server re-renders because it could not parse it is no longer erased when the hook mounts.
 
+* A paste into a field without AutoNumeric reaches `phx-change`, and a padded ` (1,234.56) ` shows as `-1,234.56`. The hook cancels the browser's paste to clean the text, which also cancelled its `input` event.
+
 * `<.unit_input>` shows a bare `Decimal` value instead of a blank amount.
 
 * A value renders with all its fraction digits, where the server rounded to three (`1.23456` showed `1.235` and was submitted so without the hook) and the hook to `:decimals` or six. A value with more digits than `:decimals` is shown for the validator to report.

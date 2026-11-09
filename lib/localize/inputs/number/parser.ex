@@ -4,8 +4,11 @@ defmodule Localize.Inputs.Number.Parser do
 
   Delegates to `Localize.Number.Parser.parse/2`. The input layer
   does no parsing of its own — this module is a thin policy
-  layer that adds form-input tolerance (paste artefacts,
-  accounting parentheses, NBSP normalisation) before forwarding.
+  layer that adds form-input tolerance before forwarding: pasted
+  dashes and accounting parentheses read as a minus sign. Space
+  characters need no cleanup, since `Localize.Number.Parser.parse/2`
+  reads any of them as the group separator in a locale that groups
+  with a space.
 
   """
 
@@ -110,16 +113,14 @@ defmodule Localize.Inputs.Number.Parser do
   def to_canonical(%Decimal{} = value), do: Decimal.to_string(value, :normal)
 
   @doc false
-  # Strip common paste artefacts. Pure, no locale awareness.
+  # Map pasted dashes to a minus sign and trim. Pure, no locale
+  # awareness.
   @spec normalize(String.t()) :: String.t()
   def normalize(string) when is_binary(string) do
     string
-    |> String.replace(" ", " ")
-    |> String.replace(" ", " ")
-    |> String.replace(" ", " ")
-    |> String.replace("−", "-")
-    |> String.replace("–", "-")
-    |> String.replace("—", "-")
+    |> String.replace("\u2212", "-")
+    |> String.replace("\u2013", "-")
+    |> String.replace("\u2014", "-")
     |> String.trim()
     |> strip_accounting_parens()
   end

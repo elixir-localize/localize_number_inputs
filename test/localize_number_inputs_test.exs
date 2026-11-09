@@ -27,6 +27,30 @@ defmodule Localize.NumberInputsTest do
       assert {:ok, nil} = Localize.Inputs.Number.Parser.parse_number("", locale: :en)
       assert {:ok, nil} = Localize.Inputs.Number.Parser.parse_number(nil, locale: :en)
     end
+
+    test "reads any pasted space as the group where the locale groups with a space" do
+      for locale <- [:fr, :ru, :sv], space <- [" ", "\u00A0", "\u202F", "\u2009"] do
+        text = "1#{space}234,5"
+        assert {:ok, decimal} = Localize.Inputs.Number.Parser.parse_number(text, locale: locale)
+        assert Decimal.equal?(decimal, Decimal.new("1234.5")), "#{locale} #{inspect(space)}"
+      end
+    end
+
+    test "trims pasted space characters" do
+      for space <- ["\u00A0", "\u202F", "\u2009", "\uFEFF"] do
+        text = "#{space}1,234.5#{space}"
+        assert {:ok, decimal} = Localize.Inputs.Number.Parser.parse_number(text, locale: :en)
+        assert Decimal.equal?(decimal, Decimal.new("1234.5")), inspect(space)
+      end
+    end
+
+    test "reads pasted dashes as a minus sign" do
+      for dash <- ["\u2212", "\u2013", "\u2014"] do
+        text = "#{dash}1.234,5"
+        assert {:ok, decimal} = Localize.Inputs.Number.Parser.parse_number(text, locale: :de)
+        assert Decimal.equal?(decimal, Decimal.new("-1234.5")), inspect(dash)
+      end
+    end
   end
 
   describe "Validator.validate_number/2" do

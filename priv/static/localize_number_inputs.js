@@ -113,21 +113,27 @@ function cssEscape(value) {
   return value.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
 }
 
+// Clean a paste into a field without AutoNumeric: dashes and
+// accounting parentheses become a minus sign, and the ends are
+// trimmed. Space characters are left alone, since the server's
+// parser reads any of them as the group separator in a locale
+// that groups with a space. Cancelling the paste also cancels
+// the browser's `input` event, so fire one for `phx-change`.
 function paste_sanitize(event) {
   const text = (event.clipboardData || window.clipboardData).getData("text");
   if (!text) return;
   event.preventDefault();
   const cleaned = text
-    .replace(/[   ]/g, " ")
-    .replace(/[−–—]/g, "-")
-    .replace(/^\((.*)\)$/, "-$1")
-    .trim();
+    .trim()
+    .replace(/[\u2212\u2013\u2014]/g, "-")
+    .replace(/^\(\s*(.*?)\s*\)$/, "-$1");
   const input = event.target;
   const start = input.selectionStart || 0;
   const end = input.selectionEnd || 0;
   input.value = input.value.slice(0, start) + cleaned + input.value.slice(end);
   const cursor = start + cleaned.length;
   input.setSelectionRange(cursor, cursor);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 // Start AutoNumeric from the plain amount the server renders in
