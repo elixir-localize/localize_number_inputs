@@ -30,6 +30,8 @@
 
 * `<.unit_input>` shows a bare `Decimal` value instead of a blank amount.
 
+* A value renders with all its fraction digits, where the server rounded to three (`1.23456` showed `1.235` and was submitted so without the hook) and the hook to `:decimals` or six. A value with more digits than `:decimals` is shown for the validator to report.
+
 * `<.unit_input>` live-formats its amount with AutoNumeric. The `NumberInput` hook looked for an input inside the hook element, but `<.unit_input>` puts the hook on the input itself.
 
 * With AutoNumeric loaded, `hi`, `bn`, `gu`, `en-IN` and the other Indian-grouping locales show `12,34,567`, including numbers of 10 digits or more. `tok` groups in twos, so its four-digit values no longer fail to parse.

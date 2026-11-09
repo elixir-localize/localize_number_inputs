@@ -26,10 +26,24 @@ defmodule Localize.Inputs.Number.ComponentsTest do
       end
     end
 
-    test "keeps the full precision in data-amount" do
-      input = number_input_tag(Decimal.new("1.23456"), "en")
+    test "renders the value's own precision, never rounded" do
+      cases = [
+        {Decimal.new("1.23456"), "en", %{}, "1.23456", "1.23456"},
+        {Decimal.new("1234.56789"), "de", %{}, "1.234,56789", "1234.56789"},
+        {Decimal.new("-0.0000001"), "en", %{}, "-0.0000001", "-0.0000001"},
+        {0.123456, "en", %{}, "0.123456", "0.123456"},
+        {"1,234.56789", "en", %{}, "1,234.56789", "1234.56789"},
+        {Decimal.new("1.23456"), "en", %{decimals: 2}, "1.23456", "1.23456"},
+        {Decimal.new("1234.6"), "en", %{integer: true}, "1,234.6", "1234.6"}
+      ]
 
-      assert input =~ ~s(data-amount="1.23456")
+      for {value, locale, attrs, formatted, plain} <- cases do
+        input = number_input_tag(value, locale, attrs)
+        context = "value=#{inspect(value)} locale=#{locale} attrs=#{inspect(attrs)}"
+
+        assert input =~ ~s(value="#{formatted}"), context
+        assert input =~ ~s(data-amount="#{plain}"), context
+      end
     end
 
     test "renders the plain decimal for locales with direction marks" do
@@ -178,9 +192,9 @@ defmodule Localize.Inputs.Number.ComponentsTest do
 
   # ── helpers ─────────────────────────────────────────────────
 
-  defp number_input_tag(value, locale) do
+  defp number_input_tag(value, locale, attrs \\ %{}) do
     value
-    |> number_input_html(locale)
+    |> number_input_html(locale, attrs)
     |> tag_with_class("input", "number-input-field")
   end
 
@@ -190,12 +204,12 @@ defmodule Localize.Inputs.Number.ComponentsTest do
     |> tag_with_class("div", "number-input-wrapper")
   end
 
-  defp number_input_html(value, locale) do
+  defp number_input_html(value, locale, attrs \\ %{}) do
     form = Phoenix.HTML.FormData.to_form(%{"quantity" => value}, as: :demo)
-    assigns = %{form: form, locale: locale}
+    assigns = %{form: form, locale: locale, attrs: attrs}
 
     to_html(~H"""
-    <Components.number_input form={@form} field={:quantity} locale={@locale} />
+    <Components.number_input form={@form} field={:quantity} locale={@locale} {@attrs} />
     """)
   end
 

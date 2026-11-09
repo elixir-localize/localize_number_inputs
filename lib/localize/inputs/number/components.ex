@@ -136,7 +136,9 @@ if Code.ensure_loaded?(Phoenix.Component) and
 
     * `:min`, `:max` — value bounds.
 
-    * `:decimals` — maximum fractional digits.
+    * `:decimals` — maximum fractional digits the user can type.
+      A value with more is shown with all its digits, never
+      rounded, for `Localize.Inputs.Number.Validator` to report.
 
     * `:align` — `:left` (default), `:right`, or `:center`.
 
@@ -277,8 +279,15 @@ if Code.ensure_loaded?(Phoenix.Component) and
       end
     end
 
+    # The value keeps its own fraction digits: the locale's standard
+    # pattern rounds to three ("1.23456" became "1.235"), and a form
+    # submitted without the hook sent the rounded number back. A
+    # value with more digits than `:decimals` allows is shown as it
+    # is, for the validator to report rather than to be rounded.
     defp format_value(value, language_tag) when is_number(value) or is_struct(value, Decimal) do
-      case Localize.Number.to_string(value, locale: language_tag) do
+      options = [locale: language_tag, max_fractional_digits: fraction_digits(value)]
+
+      case Localize.Number.to_string(value, options) do
         {:ok, formatted} -> {formatted, plain_amount(value)}
         {:error, _} -> {"", nil}
       end
@@ -286,6 +295,24 @@ if Code.ensure_loaded?(Phoenix.Component) and
 
     defp format_value(_value, _language_tag) do
       {"", nil}
+    end
+
+    defp fraction_digits(%Decimal{coef: coef, exp: exp}) when is_integer(coef) do
+      max(0, -exp)
+    end
+
+    defp fraction_digits(%Decimal{}) do
+      0
+    end
+
+    defp fraction_digits(value) when is_integer(value) do
+      0
+    end
+
+    defp fraction_digits(value) when is_float(value) do
+      value
+      |> Decimal.from_float()
+      |> fraction_digits()
     end
 
     defp plain_amount(%Decimal{} = value) do

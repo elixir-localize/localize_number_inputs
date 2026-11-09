@@ -72,8 +72,22 @@ function autoNumericGroupSpacing(grouping) {
   return GROUP_SPACING[grouping] || "3";
 }
 
-function buildAutoNumericOptions(data) {
-  const decimals = data.decimals ?? (data.integer ? 0 : 6);
+// The fraction digits of the plain amount the server renders in
+// `data-amount` ("1234.56789" has five).
+function amountDecimals(amount) {
+  const point = (amount || "").indexOf(".");
+  return point === -1 ? 0 : amount.length - point - 1;
+}
+
+// AutoNumeric rounds what `set()` hands it to `decimalPlaces` and
+// submits the rounded number, so the field allows at least the
+// amount's own fraction digits: a stored value is shown as it is,
+// for the server's validation to report, never rounded.
+// `data-decimals` (else 6, or 0 for an integer field) governs the
+// rest.
+function buildAutoNumericOptions(data, amount) {
+  const configured = data.decimals ?? (data.integer ? 0 : 6);
+  const decimals = Math.max(configured, amountDecimals(amount));
 
   return {
     decimalCharacter: data.decimal,
@@ -138,7 +152,7 @@ function startAutoNumeric(hook) {
   }
 
   const valueAttribute = input.getAttribute("value");
-  const options = buildAutoNumericOptions(hook.data);
+  const options = buildAutoNumericOptions(hook.data, amount);
   stopPlainInput(hook);
   input.value = "";
 
@@ -189,7 +203,8 @@ function syncAutoNumeric(hook) {
     return;
   }
 
-  const options = buildAutoNumericOptions(hook.data);
+  const amount = hook.input.dataset.amount;
+  const options = buildAutoNumericOptions(hook.data, amount);
   if (JSON.stringify(options) !== JSON.stringify(hook.options)) {
     try {
       hook.an.update(options);
@@ -202,7 +217,6 @@ function syncAutoNumeric(hook) {
 
   if (focused) return;
 
-  const amount = hook.input.dataset.amount;
   const value = hook.input.value;
 
   // Text the server could not read as a number: AutoNumeric
