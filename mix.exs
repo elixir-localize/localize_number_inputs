@@ -68,7 +68,7 @@ defmodule Localize.NumberInputs.MixProject do
 
   defp deps do
     [
-      {:localize, "~> 1.0"},
+      {:localize, "~> 1.6"},
       {:localize_inputs_core, "~> 0.2"},
       {:phoenix_html, "~> 4.0", optional: true},
       {:phoenix_live_view, "~> 1.0", optional: true},

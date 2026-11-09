@@ -39,6 +39,7 @@ function readData(el) {
     locale: d.locale || "en",
     decimal: d.decimal || ".",
     group: d.group || ",",
+    grouping: d.grouping || "3,3",
     minus: d.minus || "-",
     integer: d.integer === "true",
     decimals: num(d.decimals),
@@ -59,6 +60,18 @@ function autoNumericMinus(minus) {
   return [...bare].length === 1 ? bare : "-";
 }
 
+// The server renders the locale's digit grouping as "first,rest":
+// the size of the group next to the decimal separator, then of
+// every group to its left. AutoNumeric supports four shapes: "3"
+// (1,234,567), "2t" (12,34,567, the Indian lakh and crore), "2"
+// (1,23,45,67) and "4" (123,4567). CLDR uses the first three;
+// anything else falls back to "3".
+const GROUP_SPACING = { "3,3": "3", "3,2": "2t", "2,2": "2", "4,4": "4" };
+
+function autoNumericGroupSpacing(grouping) {
+  return GROUP_SPACING[grouping] || "3";
+}
+
 function buildAutoNumericOptions(data) {
   const decimals = data.decimals ?? (data.integer ? 0 : 6);
 
@@ -77,7 +90,7 @@ function buildAutoNumericOptions(data) {
     minimumValue: data.min ?? "-10000000000000",
     maximumValue: data.max ?? "10000000000000",
     onInvalidPaste: "clamp",
-    digitalGroupSpacing: data.locale && data.locale.startsWith("en-IN") ? "2s" : "3",
+    digitalGroupSpacing: autoNumericGroupSpacing(data.grouping),
   };
 }
 

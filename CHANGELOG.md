@@ -6,7 +6,11 @@
 
 * `<.number_input>` and `<.unit_input>` render the value as a plain decimal in a `data-amount` attribute (`"1234.56"`), which the `NumberInput` hook starts and resyncs AutoNumeric from.
 
+* `Localize.Inputs.Number.Symbols` has a `:grouping` field, which both inputs render as `data-grouping` (`"3,2"`) for the `NumberInput` hook to set AutoNumeric's group spacing from.
+
 ### Changed
+
+* Requires `localize ~> 1.6`.
 
 * With AutoNumeric loaded, fields show and accept Latin digits only, in every locale, as the docs now state. Since the direction-mark fix that includes `fa`, `ckb`, `sd` and `ps`, where 0.2.1 left a plain input after AutoNumeric threw.
 
@@ -23,6 +27,8 @@
 * `<.unit_input>` shows a bare `Decimal` value instead of a blank amount.
 
 * `<.unit_input>` live-formats its amount with AutoNumeric. The `NumberInput` hook looked for an input inside the hook element, but `<.unit_input>` puts the hook on the input itself.
+
+* With AutoNumeric loaded, `hi`, `bn`, `gu`, `en-IN` and the other Indian-grouping locales show `12,34,567`, including numbers of 10 digits or more. `tok` groups in twos, so its four-digit values no longer fail to parse.
 
 * With AutoNumeric loaded, fields in `ar`, `he`, `fa`, `ur` and other locales whose CLDR minus sign carries a direction mark get live formatting. The hook strips U+200E, U+200F and U+061C, which AutoNumeric rejects.
 

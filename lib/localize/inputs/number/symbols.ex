@@ -3,8 +3,9 @@ defmodule Localize.Inputs.Number.Symbols do
   Locale-derived display data for number form inputs.
 
   Returns the decimal/grouping separator characters, the active
-  number system, and the locale's minus sign — everything a JS
-  hook needs to render a number in the user's locale.
+  number system, the locale's minus sign and its digit grouping
+  — everything a JS hook needs to render a number in the user's
+  locale.
 
   All locale lookups go through `Localize.validate_locale/1`;
   the resulting `t:Localize.LanguageTag.t/0`'s
@@ -18,6 +19,7 @@ defmodule Localize.Inputs.Number.Symbols do
 
   alias Localize.Inputs.Number.NoNumberSymbolsError
   alias Localize.LanguageTag
+  alias Localize.Number.Format
   alias Localize.Number.Symbol
   alias Localize.Number.System
 
@@ -37,6 +39,12 @@ defmodule Localize.Inputs.Number.Symbols do
 
   * `:minus_sign` — the locale's minus sign character.
 
+  * `:grouping` — the integer digit grouping of the locale's
+    standard number format: `:first` is the size of the group
+    next to the decimal separator and `:rest` the size of every
+    group to its left (`%{first: 3, rest: 3}` for `1,234,567`,
+    `%{first: 3, rest: 2}` for `12,34,567`).
+
   """
   @type t :: %__MODULE__{
           locale: atom(),
@@ -44,7 +52,8 @@ defmodule Localize.Inputs.Number.Symbols do
           number_system: atom(),
           decimal: String.t(),
           group: String.t(),
-          minus_sign: String.t()
+          minus_sign: String.t(),
+          grouping: %{first: non_neg_integer(), rest: non_neg_integer()}
         }
 
   defstruct [
@@ -53,7 +62,8 @@ defmodule Localize.Inputs.Number.Symbols do
     :number_system,
     :decimal,
     :group,
-    :minus_sign
+    :minus_sign,
+    :grouping
   ]
 
   @doc """
@@ -71,8 +81,9 @@ defmodule Localize.Inputs.Number.Symbols do
 
   * `{:error, Exception.t()}` when the locale can't be parsed
     (`Localize.InvalidLocaleError`), the number system can't be
-    resolved, or no symbols are available
-    (`Localize.Inputs.Number.NoNumberSymbolsError`).
+    resolved, no symbols are available
+    (`Localize.Inputs.Number.NoNumberSymbolsError`), or the
+    locale's number formats can't be loaded.
 
   ### Examples
 
@@ -84,13 +95,18 @@ defmodule Localize.Inputs.Number.Symbols do
       iex> {info.decimal, info.group}
       {",", "."}
 
+      iex> {:ok, info} = Localize.Inputs.Number.Symbols.number_for_locale(:hi)
+      iex> info.grouping
+      %{first: 3, rest: 2}
+
   """
   @spec number_for_locale(LanguageTag.t() | atom() | String.t() | nil) ::
           {:ok, t()} | {:error, Exception.t()}
   def number_for_locale(locale \\ nil) do
     with {:ok, language_tag} <- Localize.validate_locale(locale || Localize.get_locale()),
          {:ok, number_system} <- System.number_system_from_locale(language_tag),
-         {:ok, symbols} <- resolve_symbols(language_tag, number_system) do
+         {:ok, symbols} <- resolve_symbols(language_tag, number_system),
+         {:ok, grouping} <- Format.default_grouping_for(language_tag) do
       {:ok,
        %__MODULE__{
          locale: language_tag.cldr_locale_id,
@@ -98,7 +114,8 @@ defmodule Localize.Inputs.Number.Symbols do
          number_system: number_system,
          decimal: symbol_string(symbols.decimal),
          group: symbol_string(symbols.group),
-         minus_sign: symbol_string(symbols.minus_sign)
+         minus_sign: symbol_string(symbols.minus_sign),
+         grouping: grouping.integer
        }}
     end
   end

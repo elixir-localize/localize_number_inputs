@@ -37,6 +37,16 @@ if Code.ensure_loaded?(Phoenix.Component) and
     rejects a locale's symbols, the hook falls back to that plain
     input.
 
+    ## Grouping
+
+    The hook groups digits as the locale's standard number format
+    does: in threes (`1,234,567`), in the Indian lakh and crore
+    pattern (`12,34,567` in `hi`, `bn`, `en-IN` and others) or in
+    twos (`tok`). AutoNumeric always groups, so in locales that
+    leave a four-digit number ungrouped (`es`, `pl` and others)
+    it shows `1.234` where the server renders `1234`. The parser
+    reads both.
+
     ## Tolerance of invalid input
 
     These components sit on the render path and never raise on
@@ -160,6 +170,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
         data-locale={@locale_data.locale}
         data-decimal={@locale_data.decimal}
         data-group={@locale_data.group}
+        data-grouping={grouping_attr(@locale_data.grouping)}
         data-number-system={@locale_data.number_system}
         data-minus={@locale_data.minus_sign}
         data-integer={to_string(@integer)}
@@ -299,6 +310,17 @@ if Code.ensure_loaded?(Phoenix.Component) and
     defp text_align_class(:center), do: "text-center"
     defp text_align_class(:right), do: "text-right"
 
+    # The locale's digit grouping as "first,rest" ("3,2" for
+    # 12,34,567), for the hook to choose AutoNumeric's group
+    # spacing. The empty fallback `%Symbols{}` has no grouping.
+    defp grouping_attr(%{first: first, rest: rest}) do
+      "#{first},#{rest}"
+    end
+
+    defp grouping_attr(_grouping) do
+      nil
+    end
+
     # ── unit_input + unit_picker ─────────────────────────────
 
     @doc """
@@ -401,6 +423,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
           data-locale={@locale_data.locale}
           data-decimal={@locale_data.decimal}
           data-group={@locale_data.group}
+          data-grouping={grouping_attr(@locale_data.grouping)}
           data-number-system={@locale_data.number_system}
           data-minus={@locale_data.minus_sign}
           data-integer={to_string(@integer)}

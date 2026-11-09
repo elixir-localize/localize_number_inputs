@@ -49,7 +49,7 @@ defmodule Localize.Inputs.Number.ComponentsTest do
         <Components.number_input form={@form} field={:quantity} locale="de" value={Decimal.new("98.5")} />
         """)
 
-      input = input_tag(html, "number-input-field")
+      input = tag_with_class(html, "input", "number-input-field")
       assert input =~ ~s(value="98,5")
       assert input =~ ~s(data-amount="98.5")
     end
@@ -92,18 +92,47 @@ defmodule Localize.Inputs.Number.ComponentsTest do
     end
   end
 
+  describe "data-grouping" do
+    test "carries the locale's digit grouping as first,rest" do
+      cases = [
+        {"en", "3,3"},
+        {"de", "3,3"},
+        {"ar-EG", "3,3"},
+        {"hi", "3,2"},
+        {"en-IN", "3,2"},
+        {"bn", "3,2"},
+        {"tok", "2,2"},
+        {"xx-unknown", "3,3"}
+      ]
+
+      for {locale, grouping} <- cases do
+        assert number_input_wrapper(locale) =~ ~s(data-grouping="#{grouping}"), locale
+        assert unit_input_tag(nil, locale) =~ ~s(data-grouping="#{grouping}"), locale
+      end
+    end
+  end
+
   # ── helpers ─────────────────────────────────────────────────
 
   defp number_input_tag(value, locale) do
+    value
+    |> number_input_html(locale)
+    |> tag_with_class("input", "number-input-field")
+  end
+
+  defp number_input_wrapper(locale) do
+    nil
+    |> number_input_html(locale)
+    |> tag_with_class("div", "number-input-wrapper")
+  end
+
+  defp number_input_html(value, locale) do
     form = Phoenix.HTML.FormData.to_form(%{"quantity" => value}, as: :demo)
     assigns = %{form: form, locale: locale}
 
-    html =
-      to_html(~H"""
-      <Components.number_input form={@form} field={:quantity} locale={@locale} />
-      """)
-
-    input_tag(html, "number-input-field")
+    to_html(~H"""
+    <Components.number_input form={@form} field={:quantity} locale={@locale} />
+    """)
   end
 
   defp unit_input_tag(value, locale) do
@@ -115,7 +144,7 @@ defmodule Localize.Inputs.Number.ComponentsTest do
       <Components.unit_input form={@form} field={:height} category="length" locale={@locale} />
       """)
 
-    input_tag(html, "unit-input-field")
+    tag_with_class(html, "input", "unit-input-field")
   end
 
   defp to_html(rendered) do
@@ -124,8 +153,8 @@ defmodule Localize.Inputs.Number.ComponentsTest do
     |> IO.iodata_to_binary()
   end
 
-  defp input_tag(html, class) do
-    [input] = Regex.run(~r/<input[^>]*#{class}[^>]*>/u, html)
-    input
+  defp tag_with_class(html, element, class) do
+    [tag] = Regex.run(~r/<#{element}[^>]*#{class}[^>]*>/u, html)
+    tag
   end
 end
