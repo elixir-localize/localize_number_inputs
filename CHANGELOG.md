@@ -1,5 +1,23 @@
 # Changelog
 
+## [v0.2.2] — Unreleased
+
+### Added
+
+* `<.number_input>` and `<.unit_input>` render the value as a plain decimal in a `data-amount` attribute (`"1234.56"`), which the `NumberInput` hook starts and resyncs AutoNumeric from.
+
+### Bug Fixes
+
+* The `NumberInput` hook resyncs AutoNumeric after every LiveView update, so a value the server changed or cleared no longer blanks, reverts or comes back when the pointer leaves the field.
+
+* With AutoNumeric loaded, a grouped integer such as `1.234` in `de`, `nl`, `pt` or `da` no longer loads or form-resets as 1.234 (or as 1 with `integer={true}`).
+
+* When AutoNumeric rejects a field's options, or an amount outside `:min` / `:max`, the hook keeps the server's text and falls back to the plain input instead of throwing in `mounted()`.
+
+* Text the server re-renders because it could not parse it is no longer erased when the hook mounts.
+
+* `<.unit_input>` shows a bare `Decimal` value instead of a blank amount.
+
 ## [v0.2.1] — 2026-08-18
 
 ### Changed

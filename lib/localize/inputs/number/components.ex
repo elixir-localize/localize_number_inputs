@@ -62,6 +62,9 @@ if Code.ensure_loaded?(Phoenix.Component) and
     Renders an `<input type="text" inputmode="decimal">` wrapped
     in a `<div>` that carries `data-` attributes the JS hook
     reads (locale, separators, minus sign, min/max, decimals).
+    The input carries the value as a plain decimal string in
+    `data-amount` (`"1234.56"`), which the hook starts
+    AutoNumeric from and resyncs to after each LiveView update.
     With AutoNumeric loaded the input live-formats as the user
     types; without it, the server-side parser
     (`Localize.Inputs.Number.Parser.parse_number/2`) accepts whatever
@@ -154,6 +157,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
           name={@name}
           id={@id}
           value={@formatted_value}
+          data-amount={@plain_amount}
           class={["number-input-field", text_align_class(@align), @input_class]}
           autocomplete="off"
           dir="ltr"
@@ -193,32 +197,70 @@ if Code.ensure_loaded?(Phoenix.Component) and
       form_value = (assigns.form[assigns.field] || %{}).value
       raw = explicit || form_value
 
-      assign(assigns, :formatted_value, format_value(raw, assigns.locale))
+      {formatted, plain_amount} = format_value(raw, assigns.locale)
+
+      assigns
+      |> assign(:formatted_value, formatted)
+      |> assign(:plain_amount, plain_amount)
     end
 
-    # Render the value into the input's `value=` attribute. Three
-    # safe outcomes: nil/empty input → empty string; valid number
-    # → locale-formatted string via Localize.Number.to_string;
-    # unparseable input → empty string (the page still re-renders
-    # without crashing). The user's raw text isn't preserved here
-    # because the input only ever holds canonical-shape values
-    # post-render; live editing is the JS hook's job.
-    defp format_value(nil, _locale), do: ""
-    defp format_value("", _locale), do: ""
+    # Render the value as a pair: the locale-formatted text for the
+    # input's `value` attribute, and the plain decimal string
+    # (`"1234.56"`) for its `data-amount` attribute, or `nil` when
+    # there is no number.
+    #
+    # The JS hook starts AutoNumeric from `data-amount`, never from
+    # the formatted text: AutoNumeric reads a grouped integer such
+    # as `"1.234"` (de, nl, pt) as 1.234, and cannot read direction
+    # marks.
+    #
+    # Blank input renders blank. Text that does not parse renders
+    # as typed with no `data-amount`, so the user can correct it.
+    # A value that cannot be formatted renders blank rather than
+    # crashing the page.
+    defp format_value(nil, _locale) do
+      {"", nil}
+    end
+
+    defp format_value("", _locale) do
+      {"", nil}
+    end
 
     defp format_value(value, locale) when is_binary(value) do
       case Localize.Inputs.Number.Parser.parse_number(value, locale: locale) do
-        {:ok, nil} -> ""
+        {:ok, nil} -> {"", nil}
         {:ok, parsed} -> format_value(parsed, locale)
-        {:error, _} -> value
+        {:error, _} -> {value, nil}
       end
     end
 
     defp format_value(value, locale) do
       case Localize.Number.to_string(value, locale: locale) do
-        {:ok, formatted} -> formatted
-        {:error, _} -> ""
+        {:ok, formatted} -> {formatted, plain_amount(value)}
+        {:error, _} -> {"", nil}
       end
+    end
+
+    defp plain_amount(%Decimal{} = value) do
+      if Decimal.nan?(value) or Decimal.inf?(value) do
+        nil
+      else
+        Localize.Inputs.Number.Parser.to_canonical(value)
+      end
+    end
+
+    defp plain_amount(value) when is_integer(value) do
+      Integer.to_string(value)
+    end
+
+    defp plain_amount(value) when is_float(value) do
+      value
+      |> Decimal.from_float()
+      |> Decimal.to_string(:normal)
+    end
+
+    defp plain_amount(_value) do
+      nil
     end
 
     defp value_attr(nil), do: nil
@@ -332,6 +374,7 @@ if Code.ensure_loaded?(Phoenix.Component) and
           name={"#{@name_base}[amount]"}
           id={"#{@id}-amount"}
           value={@formatted_amount}
+          data-amount={@plain_amount}
           class={["unit-input-field", text_align_class(@align), @input_class]}
           autocomplete="off"
           dir="ltr"
@@ -541,9 +584,11 @@ if Code.ensure_loaded?(Phoenix.Component) and
       {amount, unit} = extract_amount_and_unit(explicit || form_value)
 
       selected_unit = unit || assigns.default_unit || default_unit(assigns.unit_data)
+      {formatted, plain_amount} = format_value(amount, assigns.locale)
 
       assigns
-      |> assign(:formatted_amount, format_value(amount, assigns.locale))
+      |> assign(:formatted_amount, formatted)
+      |> assign(:plain_amount, plain_amount)
       |> assign(:selected_unit, selected_unit)
     end
 
@@ -553,6 +598,12 @@ if Code.ensure_loaded?(Phoenix.Component) and
     #   a bare amount (binary/Decimal/integer) — value only
     defp extract_amount_and_unit(nil), do: {nil, nil}
     defp extract_amount_and_unit(""), do: {nil, nil}
+
+    # A `Decimal` is a struct, so it would otherwise match the map
+    # clause below and lose its amount.
+    defp extract_amount_and_unit(%Decimal{} = amount) do
+      {amount, nil}
+    end
 
     defp extract_amount_and_unit(%{} = map) do
       amount = Map.get(map, "amount") || Map.get(map, :amount)

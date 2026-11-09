@@ -85,28 +85,210 @@ function paste_sanitize(event) {
   input.setSelectionRange(cursor, cursor);
 }
 
+// Start AutoNumeric from the plain amount the server renders in
+// `data-amount` ("1234.56"), not from the formatted text.
+// AutoNumeric reads a grouped integer such as "1.234" (de, nl,
+// pt) as 1.234, and cannot read direction marks. Passing the
+// amount to the constructor does not help either: it is parsed
+// with the locale's separators, so "1234.56" becomes 123456 in
+// de. Start AutoNumeric on an empty field and hand it the amount
+// with `set()`, which reads a plain decimal.
+function startAutoNumeric(hook) {
+  const input = hook.input;
+  const amount = input.dataset.amount;
+  const serverValue = input.value;
+
+  // Text without `data-amount` is text the server could not read
+  // as a number. AutoNumeric would erase it, so leave it for the
+  // user to correct, and start once the server sends an amount.
+  if (amount === undefined && serverValue.trim() !== "") {
+    usePlainInput(hook);
+    return;
+  }
+
+  const valueAttribute = input.getAttribute("value");
+  const options = buildAutoNumericOptions(hook.data);
+  stopPlainInput(hook);
+  input.value = "";
+
+  try {
+    hook.an = new AutoNumericCtor(input, options);
+    if (amount !== undefined) hook.an.set(amount);
+    hook.options = options;
+  } catch (error) {
+    // AutoNumeric throws on options it cannot use, and on an
+    // amount outside `data-min` / `data-max`. Keep the server's
+    // text rather than leave the field blank.
+    stopAutoNumeric(hook);
+    input.value = serverValue;
+    disableAutoNumeric(hook, error);
+  }
+
+  if (hook.an) watchFormReset(hook);
+
+  // AutoNumeric copies the emptied value into the `value`
+  // attribute when it starts, even if `set()` then throws. Put
+  // the server's text back: a form reset restores from it, and
+  // LiveView sends the reset value to the server.
+  if (valueAttribute === null) {
+    input.removeAttribute("value");
+  } else {
+    input.setAttribute("value", valueAttribute);
+  }
+}
+
+// LiveView rewrites the value of an unfocused input on every
+// patch without telling AutoNumeric, which keeps its own copy of
+// the number and rewrites the field from it on mouseleave, focus
+// and blur. A stale copy blanks the field, brings back an old
+// value, or restores one the server cleared. Re-read the data
+// attributes and the server's amount after each patch and hand
+// them to AutoNumeric.
+function syncAutoNumeric(hook) {
+  if (!hook.input || !AutoNumericCtor || hook.failed) return;
+
+  hook.data = readData(hook.el);
+
+  // LiveView leaves a focused input's value alone, so the user's
+  // typing stays authoritative until they leave the field.
+  const focused = document.activeElement === hook.input;
+
+  if (!hook.an) {
+    if (!focused) startAutoNumeric(hook);
+    return;
+  }
+
+  const options = buildAutoNumericOptions(hook.data);
+  if (JSON.stringify(options) !== JSON.stringify(hook.options)) {
+    try {
+      hook.an.update(options);
+      hook.options = options;
+    } catch (error) {
+      failAutoNumeric(hook, error);
+      return;
+    }
+  }
+
+  if (focused) return;
+
+  const amount = hook.input.dataset.amount;
+  const value = hook.input.value;
+
+  // Text the server could not read as a number: AutoNumeric
+  // would erase it, so step aside until the server sends an
+  // amount.
+  if (amount === undefined && value.trim() !== "") {
+    stopAutoNumeric(hook);
+    hook.input.value = value;
+    usePlainInput(hook);
+    return;
+  }
+
+  const target = amount === undefined ? "" : amount;
+  const inSync =
+    hook.an.getNumericString() === target && value === hook.an.getFormatted();
+  if (inSync) return;
+
+  try {
+    hook.an.set(target);
+  } catch (error) {
+    failAutoNumeric(hook, error);
+  }
+}
+
+// A form reset puts the server's text back from the `value`
+// attribute, and AutoNumeric then re-reads that text on a timer,
+// which turns "1.234" (de, nl, pt) into 1.234. AutoNumeric adds
+// its reset listener when it starts, before this one, so this
+// timer runs after its own and hands it the plain amount.
+function watchFormReset(hook) {
+  const form = hook.input.form;
+  if (!form) return;
+
+  hook.form = form;
+  hook.onReset = () => {
+    setTimeout(() => {
+      if (!hook.an) return;
+      const amount = hook.input.dataset.amount;
+      try {
+        hook.an.set(amount === undefined ? "" : amount);
+      } catch (error) {
+        failAutoNumeric(hook, error);
+      }
+    }, 0);
+  };
+  form.addEventListener("reset", hook.onReset);
+}
+
+function stopAutoNumeric(hook) {
+  if (hook.an) hook.an.remove();
+  hook.an = null;
+
+  if (hook.onReset) {
+    hook.form.removeEventListener("reset", hook.onReset);
+    hook.onReset = null;
+  }
+}
+
+// Remove AutoNumeric after it threw, keeping LiveView's value.
+function failAutoNumeric(hook, error) {
+  const value = hook.input.value;
+  stopAutoNumeric(hook);
+  hook.input.value = value;
+  disableAutoNumeric(hook, error);
+}
+
+function disableAutoNumeric(hook, error) {
+  hook.an = null;
+  hook.failed = true;
+  console.warn(
+    "NumberInput: AutoNumeric rejected the options or value for locale " +
+      `${hook.data.locale}; live formatting is off for this field.`,
+    error,
+  );
+  usePlainInput(hook);
+}
+
+// Without AutoNumeric the form still submits and the server-side
+// parser still accepts the locale-typed string. Only the live
+// formatting and cursor preservation are lost.
+function usePlainInput(hook) {
+  if (hook.onPaste) return;
+  hook.onPaste = paste_sanitize;
+  hook.input.addEventListener("paste", hook.onPaste);
+}
+
+function stopPlainInput(hook) {
+  if (!hook.onPaste) return;
+  hook.input.removeEventListener("paste", hook.onPaste);
+  hook.onPaste = null;
+}
+
 export const NumberInput = {
   mounted() {
     this.input = this.el.querySelector("input.number-input-field");
     if (!this.input) return;
 
-    const data = readData(this.el);
-
-    if (!AutoNumericCtor) {
-      this.input.addEventListener("paste", paste_sanitize);
-      return;
-    }
+    this.data = readData(this.el);
 
     // No submit-time canonicalisation: the form value is the
     // user's locale-formatted string. The server parses it with
     // the locale. Wire format is identical with or without
     // AutoNumeric loaded — no canonical-vs-locale ambiguity for
     // the server to puzzle out.
-    this.an = new AutoNumericCtor(this.input, buildAutoNumericOptions(data));
+    if (AutoNumericCtor) {
+      startAutoNumeric(this);
+    } else {
+      usePlainInput(this);
+    }
+  },
+
+  updated() {
+    syncAutoNumeric(this);
   },
 
   destroyed() {
-    if (this.an) this.an.remove();
+    stopAutoNumeric(this);
   },
 };
 

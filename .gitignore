@@ -31,3 +31,6 @@ mise.toml
 .tool-versions
 
 .DS_Store
+
+# Session context
+CLAUDE.local.md
