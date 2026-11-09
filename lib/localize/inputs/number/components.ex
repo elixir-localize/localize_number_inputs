@@ -21,6 +21,22 @@ if Code.ensure_loaded?(Phoenix.Component) and
 
         npm install autonumeric
 
+    ## Digits
+
+    AutoNumeric writes and accepts Latin digits (0–9) only. With
+    it loaded, a field in a locale that has digits of its own
+    (`fa`, `ckb`, `bn`, `mr`, `my` and others) switches to Latin
+    digits when the hook starts, and digits typed or pasted in
+    the locale's own script are ignored. The submitted text keeps
+    the locale's separators and minus sign, and
+    `Localize.Inputs.Number.Parser.parse_number/2` reads it back.
+
+    Without AutoNumeric the field is a plain input. The server
+    renders the locale's digits, and the parser accepts the
+    locale's digits and Latin digits alike. If AutoNumeric
+    rejects a locale's symbols, the hook falls back to that plain
+    input.
+
     ## Tolerance of invalid input
 
     These components sit on the render path and never raise on
@@ -68,7 +84,9 @@ if Code.ensure_loaded?(Phoenix.Component) and
     With AutoNumeric loaded the input live-formats as the user
     types; without it, the server-side parser
     (`Localize.Inputs.Number.Parser.parse_number/2`) accepts whatever
-    the user typed on submit.
+    the user typed on submit. AutoNumeric shows and accepts Latin
+    digits only, in every locale; see "Digits" in the module
+    documentation.
 
     The form value submits in the user's *locale-formatted* shape
     — exactly what AutoNumeric was displaying. Parse it on the

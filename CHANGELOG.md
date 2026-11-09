@@ -6,6 +6,10 @@
 
 * `<.number_input>` and `<.unit_input>` render the value as a plain decimal in a `data-amount` attribute (`"1234.56"`), which the `NumberInput` hook starts and resyncs AutoNumeric from.
 
+### Changed
+
+* With AutoNumeric loaded, fields show and accept Latin digits only, in every locale, as the docs now state. Since the direction-mark fix that includes `fa`, `ckb`, `sd` and `ps`, where 0.2.1 left a plain input after AutoNumeric threw.
+
 ### Bug Fixes
 
 * The `NumberInput` hook resyncs AutoNumeric after every LiveView update, so a value the server changed or cleared no longer blanks, reverts or comes back when the pointer leaves the field.

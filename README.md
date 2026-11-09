@@ -60,6 +60,8 @@ new LiveSocket("/live", Socket, {
 
 Without AutoNumeric loaded the input still works — the server-side parser accepts whatever the user typed on submit. Live formatting and cursor preservation are off in that fallback.
 
+AutoNumeric shows and accepts Latin digits (0–9) only. In a locale with digits of its own (`fa`, `ckb`, `bn`, `mr`, `my` and others) the field switches to Latin digits when the hook starts, and digits typed or pasted in the locale's own script are ignored. The submitted text keeps the locale's separators, and the server-side parser reads it back.
+
 ## License
 
 Apache-2.0.

@@ -15,6 +15,13 @@
 // baseline: the input still works, the server-side parser still
 // accepts whatever the user typed, but live formatting and cursor
 // preservation are off.
+//
+// AutoNumeric writes and accepts Latin digits only. In locales
+// with digits of their own (fa, ckb, bn, mr, my…) the field
+// switches to Latin digits when the hook starts, and AutoNumeric
+// ignores digits typed or pasted in the locale's script. The
+// submitted text keeps the locale's separators, and the server
+// parser reads it.
 
 let AutoNumericCtor =
   (typeof window !== "undefined" && window.AutoNumeric) || null;
@@ -33,7 +40,6 @@ function readData(el) {
     decimal: d.decimal || ".",
     group: d.group || ",",
     minus: d.minus || "-",
-    digitSystem: d.digitSystem || "latn",
     integer: d.integer === "true",
     decimals: num(d.decimals),
     min: d.min || null,
