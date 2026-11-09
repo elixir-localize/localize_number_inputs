@@ -41,6 +41,18 @@ function readData(el) {
   };
 }
 
+// AutoNumeric takes a minus sign of exactly one character. CLDR
+// wraps the minus in direction marks in many locales (ar, he, fa,
+// ckb, sd: "\u200e-", "\u061c-", "\u200e\u2212"), which AutoNumeric
+// rejects by throwing. Drop the marks, and use "-" if anything
+// other than one character is left.
+const DIRECTION_MARKS = /[\u200e\u200f\u061c]/g;
+
+function autoNumericMinus(minus) {
+  const bare = (minus || "-").replace(DIRECTION_MARKS, "");
+  return [...bare].length === 1 ? bare : "-";
+}
+
 function buildAutoNumericOptions(data) {
   const decimals = data.decimals ?? (data.integer ? 0 : 6);
 
@@ -48,7 +60,7 @@ function buildAutoNumericOptions(data) {
     decimalCharacter: data.decimal,
     digitGroupSeparator: data.group,
     decimalCharacterAlternative: data.decimal === "." ? "," : ".",
-    negativeSignCharacter: data.minus,
+    negativeSignCharacter: autoNumericMinus(data.minus),
     decimalPlaces: decimals,
     decimalPlacesShownOnFocus: decimals,
     decimalPlacesShownOnBlur: decimals,
