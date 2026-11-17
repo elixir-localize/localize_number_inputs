@@ -2,7 +2,7 @@ defmodule Localize.NumberInputs.MixProject do
   use Mix.Project
 
   # Also change the version in package.json
-  @version "0.2.1"
+  @version "0.2.2"
   @source_url "https://github.com/elixir-localize/localize_number_inputs"
 
   def project do
@@ -69,7 +69,7 @@ defmodule Localize.NumberInputs.MixProject do
 
   defp deps do
     [
-      {:localize, "~> 1.6"},
+      {:localize, "~> 1.7"},
       {:localize_inputs_core, "~> 0.2"},
       {:phoenix_html, "~> 4.0", optional: true},
       {:phoenix_live_view, "~> 1.0", optional: true},

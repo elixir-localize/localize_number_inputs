@@ -1,6 +1,6 @@
 # Changelog
 
-## [v0.2.2] — Unreleased
+## [v0.2.2] — 2026-11-18
 
 ### Added
 
@@ -12,7 +12,7 @@
 
 ### Changed
 
-* Requires `localize ~> 1.6`.
+* Requires `localize ~> 1.7`, whose parser reads Latin digits written with a locale's own separators, so the 37 locales that write `٫` and `٬` (`ar-EG`, `fa`, `ur-IN` and others) submit amounts it reads.
 
 * `<.number_input>`, `<.unit_input>` and `<.unit_picker>` accept `:locale` as a string, atom or `Localize.LanguageTag` and validate it once per render. An invalid locale formats the value in `en` as well as the separators, where the value rendered blank.
 

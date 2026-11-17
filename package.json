@@ -1,6 +1,6 @@
 {
   "name": "localize_number_inputs",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Phoenix LiveView hooks for Localize.Inputs.Number: AutoNumeric-backed locale-aware number formatting and a searchable unit picker.",
   "license": "Apache-2.0",
   "type": "module",
